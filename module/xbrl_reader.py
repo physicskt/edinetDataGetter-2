@@ -77,7 +77,11 @@ def extract_values_from_xbrl(xbrl_file:str, target_block_name:str, search_words_
                                         extracted_values[word] = int(extracted_value) if extracted_value else None
                                         logger.info(f"✅ 完全一致で抽出: {word} = {extracted_values[word]}")
                                 except Exception as e:
-                                    logger.exception(f"完全一致検索中にエラー: {word}")
+                                    log_user_error(
+                                        f"完全一致検索中にエラー: {word}",
+                                        f"cells: {cells}, index: {index}",
+                                        e
+                                    )
                                     continue
 
                         # 部分一致の検索（完全一致で見つからなかった場合のみ）
@@ -95,23 +99,43 @@ def extract_values_from_xbrl(xbrl_file:str, target_block_name:str, search_words_
                                         logger.info(f"✅ 部分一致で抽出: {word} = {extracted_values[word]}")
                                         break
                                 except Exception as e:
-                                    logger.exception(f"部分一致検索中にエラー: {word}")
+                                    log_user_error(
+                                        f"部分一致検索中にエラー: {word}",
+                                        f"cell: {cell}, cells: {cells}",
+                                        e
+                                    )
                                     continue
                     except Exception as e:
-                        logger.exception(f"行解析中にエラー: Table {table_idx}, Row {row_idx}")
+                        log_user_error(
+                            f"行解析中にエラー: Table {table_idx}, Row {row_idx}",
+                            f"row cells count: {len(row.findall('.//td')) + len(row.findall('.//th'))}",
+                            e
+                        )
                         continue
             except Exception as e:
-                logger.exception(f"表解析中にエラー: Table {table_idx}")
+                log_user_error(
+                    f"表解析中にエラー: Table {table_idx}",
+                    f"table rows count: {len(table.findall('.//tr'))}",
+                    e
+                )
                 continue
 
         logger.info(f"✅ 抽出完了: {target_block_name} -> {extracted_values}")
         return extracted_values
         
     except etree.XMLSyntaxError as e:
-        logger.exception(f"XBRL XMLパースエラー: {xbrl_file}")
+        log_user_error(
+            f"XBRL XMLパースエラー: {xbrl_file}",
+            f"target_block: {target_block_name}, search_words: {search_words_list}",
+            e
+        )
         return {}
     except Exception as e:
-        logger.exception(f"XBRL値抽出中に予期しないエラー: {xbrl_file}, {target_block_name}")
+        log_user_error(
+            f"XBRL値抽出中に予期しないエラー",
+            f"file: {xbrl_file}, target_block: {target_block_name}",
+            e
+        )
         return {}
 
 

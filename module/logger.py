@@ -87,6 +87,63 @@ def log_long_msg(msg: str):
     logger.info(f"{msg}")
     logger.info("##################################")
 
+def log_user_error(user_msg: str, technical_context: str = None, exception: Exception = None):
+    """
+    Log a user-friendly error message to console and detailed technical info to file.
+    
+    Args:
+        user_msg: Simple, clear message for general users
+        technical_context: Additional context for debugging (optional)  
+        exception: Exception object for detailed logging (optional)
+    """
+    # User-friendly message to console and file
+    logger.error(f"❌ {user_msg}")
+    
+    # Technical details only to file for debugging
+    if technical_context or exception:
+        # Create a temporary logger that only writes to file
+        file_logger = logging.getLogger('technical_details')
+        file_logger.setLevel(logging.DEBUG)
+        
+        # Only add file handler if not already present
+        if not file_logger.handlers:
+            log_dir = Path(__file__).parent.parent / 'log'
+            log_dir.mkdir(exist_ok=True)
+            log_file = str(log_dir / 'logfile.log')
+            
+            file_handler = logging.FileHandler(log_file, encoding='utf-8')
+            file_handler.setLevel(logging.DEBUG)
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s')
+            file_handler.setFormatter(formatter)
+            file_logger.addHandler(file_handler)
+            file_logger.propagate = False  # Prevent duplicating to root logger
+        
+        # Log technical details to file
+        if technical_context:
+            file_logger.debug(f"Technical context: {technical_context}")
+        if exception:
+            file_logger.exception("Detailed error information:")
+
+def log_user_warning(user_msg: str, technical_context: str = None):
+    """
+    Log a user-friendly warning message.
+    
+    Args:
+        user_msg: Simple, clear warning message for general users
+        technical_context: Additional context for debugging (optional)
+    """
+    logger.warning(f"⚠️ {user_msg}")
+    
+    if technical_context:
+        # Log technical details to file only
+        file_logger = logging.getLogger('technical_details')
+        if file_logger.handlers:  # Only if already set up
+            file_logger.debug(f"Warning context: {technical_context}")
+
+def log_user_success(user_msg: str):
+    """Log a user-friendly success message."""
+    logger.info(f"✅ {user_msg}")
+
 log_file = str(Path(__file__).parent / 'log' / 'logfile.log')
 logger = setup_logger(log_file)
 

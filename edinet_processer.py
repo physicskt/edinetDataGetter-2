@@ -80,13 +80,25 @@ def download_and_extract_xbrl(download_url, save_folder=None, fund_code:str = "G
         return None
         
     except requests.exceptions.RequestException as e:
-        logger.exception(f"XBRLダウンロード中にネットワークエラーが発生しました: {fund_code}")
+        log_user_error(
+            f"XBRLダウンロード中にネットワークエラーが発生しました",
+            f"fund_code: {fund_code}, URL: {download_url}",
+            e
+        )
         raise
     except zipfile.BadZipFile as e:
-        logger.exception(f"ZIPファイルの解凍に失敗しました: {fund_code}")
+        log_user_error(
+            f"ZIPファイルの解凍に失敗しました",
+            f"fund_code: {fund_code}, save_folder: {save_folder}",
+            e
+        )
         raise
     except Exception as e:
-        logger.exception(f"XBRLダウンロード・解凍中に予期しないエラーが発生しました: {fund_code}")
+        log_user_error(
+            f"XBRLダウンロード・解凍中に予期しないエラーが発生しました",
+            f"fund_code: {fund_code}, URL: {download_url}",
+            e
+        )
         raise
 
 
@@ -98,7 +110,11 @@ def write_to_spreadsheet(data):
         ss = client.open_by_url(SPREADSHEET_URL)
         logger.info("✅ Googleスプレッドシートに接続しました")
     except Exception as e:
-        logger.exception("Googleスプレッドシートへの接続に失敗しました")
+        log_user_error(
+            "Googleスプレッドシートに接続できませんでした",
+            f"SPREADSHEET_URL: {SPREADSHEET_URL}",
+            e
+        )
         raise
 
     try:
@@ -120,7 +136,11 @@ def write_to_spreadsheet(data):
             sheet.clear()
             logger.info("✅ シートの内容をクリアしました")
         except Exception as e:
-            logger.exception("シートクリア中にエラーが発生しました")
+            log_user_error(
+                "シートの内容をクリアできませんでした",
+                f"sheet_name: {sheet_name_data}",
+                e
+            )
             raise
 
         headers = [
@@ -136,7 +156,11 @@ def write_to_spreadsheet(data):
             sheet.append_row(headers)
             logger.info("✅ ヘッダー行を追加しました")
         except Exception as e:
-            logger.exception("ヘッダー行追加中にエラーが発生しました")
+            log_user_error(
+                "ヘッダー行を追加できませんでした",
+                f"headers: {headers}",
+                e
+            )
             raise
 
         # headersが辞書のキーとして使われている前提
@@ -147,7 +171,11 @@ def write_to_spreadsheet(data):
                 try:
                     new_row.append(row[key])
                 except Exception as e:
-                    logger.exception(f"{row.get('企業名', 'Unknown')}: {key}に有効なデータがありません")
+                    log_user_error(
+                        f"{row.get('企業名', 'Unknown')}のデータ項目が不正です",
+                        f"missing key: {key}, available keys: {list(row.keys())}",
+                        e
+                    )
                     new_row.append("NA")
 
             data_to_insert.append(new_row)
@@ -157,7 +185,11 @@ def write_to_spreadsheet(data):
             sheet.append_rows(data_to_insert)
             logger.info(f"✅ {len(data_to_insert)}行のデータを追加しました")
         except Exception as e:
-            logger.exception("データ行追加中にエラーが発生しました")
+            log_user_error(
+                "データ行をスプレッドシートに追加できませんでした",
+                f"data_rows: {len(data_to_insert)}",
+                e
+            )
             raise
 
         # 全ての書式をリセット
@@ -173,12 +205,17 @@ def write_to_spreadsheet(data):
             })
             logger.info(f"✅ 書式設定を適用した範囲: {range_}")
         except Exception as e:
-            logger.exception("書式設定中にエラーが発生しました")
-            # 書式設定エラーは処理を止めない
-            logger.info("書式設定に失敗しましたが、データ書き込みは完了しています")
+            log_user_warning(
+                "書式設定に失敗しましたが、データ書き込みは完了しています",
+                f"range: {range_ if 'range_' in locals() else 'unknown'}"
+            )
             
     except Exception as e:
-        logger.exception("Googleスプレッドシート書き込み処理中にエラーが発生しました")
+        log_user_error(
+            "Googleスプレッドシート書き込み処理中にエラーが発生しました",
+            f"data_length: {len(data) if data else 0}",
+            e
+        )
         raise
 
 
@@ -252,15 +289,22 @@ def main(company_conuts:int=None, start_date=None):
             logger.info(doc["fundCode"])
             xbrl_path = download_and_extract_xbrl(doc["XBRLダウンロードURL"], str(config['xbrl_folder']), fund_code=doc["fundCode"])
         except Exception as e:
-            logger.exception(f"fundCodeでのXBRLダウンロードに失敗しました: {doc['企業名']}")   
+            log_user_error(
+                f"{doc['企業名']} のXBRLダウンロード（fundCode）に失敗しました", 
+                f"fundCode: {doc.get('fundCode')}, URL: {doc['XBRLダウンロードURL']}", 
+                e
+            )   
             try:
                 # ファンドコードが取れなければ EDINETコードをとる
                 logger.info("EDINETコード")
                 logger.info(doc["EDINETコード"])
                 xbrl_path = download_and_extract_xbrl(doc["XBRLダウンロードURL"], str(config['xbrl_folder']), fund_code=doc["EDINETコード"])
             except Exception as e:
-                logger.exception(f"EDINETコードでのXBRLダウンロードに失敗しました: {doc['企業名']}")    
-                logger.info(f"❌ {doc['企業名']} のXBRLダウンロードに失敗しました。次の企業に進みます。")
+                log_user_error(
+                    f"{doc['企業名']} のXBRLダウンロード（EDINETコード）に失敗しました。次の企業に進みます",
+                    f"EDINETコード: {doc.get('EDINETコード')}, URL: {doc['XBRLダウンロードURL']}",
+                    e
+                )
                 continue
 
 
@@ -282,7 +326,11 @@ def main(company_conuts:int=None, start_date=None):
                 financial_data = {**financial_data, **profit_loss}
             logger.info(f"✅ {doc['企業名']} fund形式でのXBRL解析が成功しました")
         except Exception as e:
-            logger.exception(f"fund形式でのXBRL解析に失敗しました: {doc['企業名']}")
+            log_user_error(
+                f"{doc['企業名']} のfund形式XBRL解析に失敗しました",
+                f"XBRL path: {xbrl_path}, target blocks: BalanceSheetTextBlock, StatementOfIncomeAndRetainedEarningsTextBlock",
+                e
+            )
             logger.info("通常企業形式での解析を試行します。")
         
         # Try regular company extraction if fund extraction failed or didn't get enough data
@@ -294,8 +342,11 @@ def main(company_conuts:int=None, start_date=None):
                     financial_data = {**financial_data, **profit_loss}
                 logger.info(f"✅ {doc['企業名']} 通常企業形式でのXBRL解析が成功しました")
             except Exception as e:
-                logger.exception(f"通常企業形式でのXBRL解析に失敗しました: {doc['企業名']}")
-                logger.info(f"❌ {doc['企業名']} のXBRL解析に失敗しました。次の企業に進みます。")
+                log_user_error(
+                    f"{doc['企業名']} の通常企業形式XBRL解析に失敗しました。次の企業に進みます",
+                    f"XBRL path: {xbrl_path}, target blocks: ConsolidatedBalanceSheetTextBlock, ConsolidatedStatementOfIncomeTextBlock",
+                    e
+                )
                 continue
 
         # キャッシュフロー取得 ConsolidatedStatementOfCashFlowsTextBlock
@@ -305,7 +356,11 @@ def main(company_conuts:int=None, start_date=None):
                 financial_data = {**financial_data, **cash_flow_data}
                 logger.info(f"✅ {doc['企業名']} キャッシュフロー取得成功")
         except Exception as e:
-            logger.exception(f"キャッシュフロー取得に失敗しました: {doc['企業名']}")
+            log_user_error(
+                f"{doc['企業名']} のキャッシュフロー取得に失敗しました",
+                f"XBRL path: {xbrl_path}, target block: ConsolidatedStatementOfCashFlowsTextBlock",
+                e
+            )
             logger.info("キャッシュフローなしで処理を続けます。")
 
         # 財務指標の計算
@@ -317,7 +372,11 @@ def main(company_conuts:int=None, start_date=None):
                     data_dict["営業利益率"] = round(data_dict["営業利益率"], 2)
                     logger.info(f"✅ {doc['企業名']} fund形式営業利益率計算成功: {data_dict['営業利益率']}%")
         except Exception as e:
-            logger.exception(f"fund形式営業利益率計算に失敗しました: {doc['企業名']}")
+            log_user_error(
+                f"{doc['企業名']} のfund形式営業利益率計算に失敗しました",
+                f"当期純利益又は当期純損失: {financial_data.get('当期純利益又は当期純損失')}, 営業収益合計: {financial_data.get('営業収益合計')}",
+                e
+            )
             
         # 通常企業の場合の営業利益率計算
         try:
@@ -327,7 +386,11 @@ def main(company_conuts:int=None, start_date=None):
                     data_dict["営業利益率"] = round(data_dict["営業利益率"], 2)
                     logger.info(f"✅ {doc['企業名']} 通常企業営業利益率計算成功: {data_dict['営業利益率']}%")
         except Exception as e:
-            logger.exception(f"通常企業営業利益率計算に失敗しました: {doc['企業名']}")
+            log_user_error(
+                f"{doc['企業名']} の通常企業営業利益率計算に失敗しました",
+                f"営業利益: {financial_data.get('営業利益')}, 売上高: {financial_data.get('売上高')}",
+                e
+            )
             
         # 自己資本比率計算
         try:
@@ -337,7 +400,11 @@ def main(company_conuts:int=None, start_date=None):
                     data_dict["自己資本比率"] = round(data_dict["自己資本比率"], 2)
                     logger.info(f"✅ {doc['企業名']} 自己資本比率計算成功: {data_dict['自己資本比率']}%")
         except Exception as e:
-            logger.exception(f"自己資本比率計算に失敗しました: {doc['企業名']}")
+            log_user_error(
+                f"{doc['企業名']} の自己資本比率計算に失敗しました",
+                f"純資産合計: {financial_data.get('純資産合計')}, 負債純資産合計: {financial_data.get('負債純資産合計')}",
+                e
+            )
 
         final_data.append({**doc, **data_dict, **financial_data})
         logger.info(f"✅ {doc['企業名']} の処理が完了しました")
@@ -348,7 +415,11 @@ def main(company_conuts:int=None, start_date=None):
         logger.info("✅ Googleスプレッドシート書き込み完了！")
         logger.info(SPREADSHEET_URL)
     except Exception as e:
-        logger.exception("Googleスプレッドシート書き込み中にエラーが発生しました")
+        log_user_error(
+            "Googleスプレッドシートに書き込めませんでした",
+            f"SPREADSHEET_URL: {SPREADSHEET_URL}, データ件数: {len(final_data) if final_data else 0}",
+            e
+        )
         logger.info("処理は続行されます...")
     
     # Generate documentation
@@ -359,7 +430,11 @@ def main(company_conuts:int=None, start_date=None):
         config_doc_path = save_config_documentation()
         logger.info(f"📄 設定ドキュメントを更新しました: {config_doc_path}")
     except Exception as e:
-        logger.exception("ドキュメント生成中にエラーが発生しました")
+        log_user_error(
+            "ドキュメント生成中にエラーが発生しました",
+            f"documents count: {len(documents) if documents else 0}, final_data count: {len(final_data) if final_data else 0}",
+            e
+        )
         logger.info("処理は完了しています...")
     
     logger.info(f"🎉 全処理完了！ 処理対象: {len(documents)}社, 成功: {len(final_data)}社")

@@ -6,7 +6,7 @@ from pathlib import Path
 
 # EDINET API から有価証券報告書一覧を取得
 def fetch_edinet_documents(yyyy_mm_dd="2024-03-10", EDINET_API_KEY="", save_json=True):
-    from .logger import logger
+    from .logger import logger, log_user_error, log_user_warning, log_user_success
     
     url = "https://disclosure.edinet-fsa.go.jp/api/v2/documents.json"
     headers = {
@@ -23,7 +23,7 @@ def fetch_edinet_documents(yyyy_mm_dd="2024-03-10", EDINET_API_KEY="", save_json
         response = requests.get(url, headers=headers, params=params)
         
         if response.status_code == 403:
-            logger.error("❌ APIアクセスが禁止されています。認証情報を確認してください。")
+            log_user_error("APIアクセスが禁止されています。認証情報を確認してください")
             return []
         
         response.raise_for_status()  # HTTPエラーが発生した場合は例外を発生させる
@@ -42,7 +42,10 @@ def fetch_edinet_documents(yyyy_mm_dd="2024-03-10", EDINET_API_KEY="", save_json
                     json.dump(json_data, f, ensure_ascii=False, indent=2)
                 logger.info(f"✅ JSON response saved to: {json_path}")
             except Exception as e:
-                logger.exception("JSON保存中にエラーが発生しましたが、処理を続けます。")
+                log_user_warning(
+                    "JSON保存中にエラーが発生しましたが、処理を続けます",
+                    f"json_path: {json_path}"
+                )
         
         documents = []
         
@@ -63,17 +66,29 @@ def fetch_edinet_documents(yyyy_mm_dd="2024-03-10", EDINET_API_KEY="", save_json
                     # docのキーと値もそのまま追加
                     documents[-1].update(doc)
             except Exception as e:
-                logger.exception(f"書類データ処理中にエラーが発生しました: {doc.get('filerName', 'Unknown')}")
+                log_user_error(
+                    f"書類データ処理中にエラーが発生しました: {doc.get('filerName', 'Unknown')}",
+                    f"doc keys: {list(doc.keys()) if doc else 'None'}",
+                    e
+                )
                 continue  # エラーが発生した書類はスキップして続行
         
         logger.info(f"✅ {len(documents)}件の有価証券報告書を取得しました")
         return documents
         
     except requests.exceptions.RequestException as e:
-        logger.exception(f"EDINET API リクエスト中にネットワークエラーが発生しました: {yyyy_mm_dd}")
+        log_user_error(
+            f"EDINET API リクエスト中にネットワークエラーが発生しました",
+            f"date: {yyyy_mm_dd}, API_URL: {url}",
+            e
+        )
         return []
     except Exception as e:
-        logger.exception(f"EDINET書類取得中に予期しないエラーが発生しました: {yyyy_mm_dd}")
+        log_user_error(
+            f"EDINET書類取得中に予期しないエラーが発生しました",
+            f"date: {yyyy_mm_dd}",
+            e
+        )
         return []
 
 
