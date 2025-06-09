@@ -1,6 +1,10 @@
 import re
+import os
 from lxml import etree, html
-from .logger import *
+try:
+    from .logger import *
+except ImportError:
+    from logger import *
 
 def extract_values_from_xbrl(xbrl_file:str, target_block_name:str, search_words_list:list[str]):
     """
@@ -25,6 +29,7 @@ def extract_values_from_xbrl(xbrl_file:str, target_block_name:str, search_words_
     """
     try:
         # XBRLファイルを解析
+        xbrl_file = os.path.abspath(xbrl_file)
         tree = etree.parse(xbrl_file)
         root = tree.getroot()
 
@@ -63,40 +68,43 @@ def extract_values_from_xbrl(xbrl_file:str, target_block_name:str, search_words_
                                 [cell.text_content().strip() for cell in row.findall(".//th")]
                         logger.debug(f"Table {table_idx}, Row {row_idx}: {cells}")  # デバッグ用
 
-                        # 各キーワードごとに検索
-                        # 完全一致の検索
-                        for word in search_words_list:
-                            if word in cells:  # 完全一致するセルがあるか
-                                try:
-                                    index = cells.index(word)
-                                    if index + 1 < len(cells):  # 次のセルが存在する場合
-                                        extracted_value = re.sub(r"^[^\x00-\x7F]+", "", cells[-1])
-                                        extracted_value = re.sub(r"[^\d-]", "", extracted_value)  # 数字とマイナス記号以外を除去
-                                        if "△" in cells[-1]:
-                                            extracted_value = "-" + extracted_value
-                                        extracted_values[word] = int(extracted_value) if extracted_value else None
-                                        logger.info(f"✅ 完全一致で抽出: {word} = {extracted_values[word]}")
-                                except Exception as e:
-                                    logger.exception(f"完全一致検索中にエラー: {word}")
-                                    continue
+                        if not cells:
+                            continue
 
-                        # 部分一致の検索（完全一致で見つからなかった場合のみ）
+                        # すべてのワードについて処理
                         for word in search_words_list:
                             if extracted_values[word] is not None:
                                 continue
-                            for i, cell in enumerate(cells):
-                                try:
-                                    if word in cell and i + 1 < len(cells):  # 部分一致で検索
-                                        extracted_value = re.sub(r"^[^\x00-\x7F]+", "", cells[-1])
-                                        extracted_value = re.sub(r"[^\d-]", "", extracted_value)  # 数字とマイナス記号以外を除去
-                                        if "△" in cells[-1]:
-                                            extracted_value = "-" + extracted_value
-                                        extracted_values[word] = int(extracted_value) if extracted_value else None
-                                        logger.info(f"✅ 部分一致で抽出: {word} = {extracted_values[word]}")
-                                        break
-                                except Exception as e:
-                                    logger.exception(f"部分一致検索中にエラー: {word}")
+
+                            # 完全一致しない場合はスキップ
+                            if word in cells:
+                                index = cells.index(word)
+                                if index + 1 >= len(cells):
                                     continue
+                                extracted_value = re.sub(r"^[^\x00-\x7F]+", "", cells[-1])
+                                extracted_value = re.sub(r"[^\d-]", "", extracted_value)
+                                if "△" in cells[-1]:
+                                    extracted_value = "-" + extracted_value
+                                extracted_values[word] = int(extracted_value) if extracted_value else None
+                                logger.info(f"✅ 完全一致で抽出: {word} = {extracted_values[word]}")
+                                break  # このrowで見つかったので次のrowへ
+
+                            # 部分一致
+                            found = False
+                            for i, cell in enumerate(cells):
+                                if word not in cell or i + 1 >= len(cells):
+                                    continue
+                                extracted_value = re.sub(r"^[^\x00-\x7F]+", "", cells[-1])
+                                extracted_value = re.sub(r"[^\d-]", "", extracted_value)
+                                if "△" in cells[-1]:
+                                    extracted_value = "-" + extracted_value
+                                extracted_values[word] = int(extracted_value) if extracted_value else None
+                                logger.info(f"✅ 部分一致で抽出: {word} = {extracted_values[word]}")
+                                found = True
+                                break
+                            if found:
+                                break  # このrowで見つかったので次のrowへ
+
                     except Exception as e:
                         logger.exception(f"行解析中にエラー: Table {table_idx}, Row {row_idx}")
                         continue
@@ -117,7 +125,8 @@ def extract_values_from_xbrl(xbrl_file:str, target_block_name:str, search_words_
 
 if __name__ == "__main__":
     # XBRLファイルのパス
-    xbrl_path = r"C:\code\Edinet情報取得\プログラム\xbrl_files\XBRL\PublicDoc\jpsps070000-asr-001_G12016-000_2023-12-08_01_2024-03-08.xbrl"
+    dir = os.path.dirname(os.path.abspath(__file__))
+    xbrl_path = os.path.join(dir, "..", "xbrl_files", "XBRL", "PublicDoc", "jpsps070000-asr-001_G15227-000_2024-12-10_01_2025-03-03.xbrl")
     # 取得したいデータのリスト
     search_words = ["発行株式数", "売上高", "当期純利益又は当期純損失", "期末剰余金又は期末欠損金"]
     # 抽出対象のテキストブロック名

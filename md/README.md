@@ -28,3 +28,26 @@ This folder contains technical documentation for EDINET Data Getter.
 The following files are automatically generated during execution:
 - `run_summary_YYYY-MM-DD_HHMMSS.md` - Result summary for each execution
 
+---
+
+## 📊 Current Configuration Summary
+
+- **Company Count Limit**: 1
+- **Default Start Date**: 2024-03-08
+- **Sheet Name**: EDINET_Data
+- **JSON Folder**: C:\code\git\Edinet\edinetDataGetter-2\json
+- **Log Folder**: C:\code\git\Edinet\edinetDataGetter-2\log
+- **MD Folder**: C:\code\git\Edinet\edinetDataGetter-2\md
+- **XBRL Folder**: C:\code\git\Edinet\edinetDataGetter-2\xbrl_files
+
+## 💾 Extracted Data Fields
+- 配当性向 (Dividend Payout Ratio)
+- EPS (Earnings Per Share)
+- 株価収益率 (Price-to-Earnings Ratio)
+- 営業CF (Operating Cash Flow)
+- 営業利益率 (Operating Profit Margin)
+- 配当利回り (Dividend Yield)
+- 自己資本比率 (Equity Ratio)
+
+---
+Last updated: 2025-06-10 07:30:03
