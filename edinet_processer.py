@@ -276,8 +276,11 @@ def main(company_conuts:int=None, start_date=None):
         
         # Try fund-specific extraction first
         try:
-            financial_data = extract_values_from_xbrl(xbrl_path, "BalanceSheetTextBlock", ["純資産合計", "負債純資産合計"])
-            profit_loss = extract_values_from_xbrl(xbrl_path, "StatementOfIncomeAndRetainedEarningsTextBlock", ["営業収益合計", "営業利益又は営業損失", "当期純利益又は当期純損失"])
+            fund_balance_config = config['xbrl_extraction']['fund']['balance_sheet']
+            financial_data = extract_values_from_xbrl(xbrl_path, fund_balance_config['target_block_name'], fund_balance_config['search_words_list'])
+            
+            fund_profit_config = config['xbrl_extraction']['fund']['profit_loss']
+            profit_loss = extract_values_from_xbrl(xbrl_path, fund_profit_config['target_block_name'], fund_profit_config['search_words_list'])
             if profit_loss:
                 financial_data = {**financial_data, **profit_loss}
             logger.info(f"✅ {doc['企業名']} fund形式でのXBRL解析が成功しました")
@@ -288,8 +291,11 @@ def main(company_conuts:int=None, start_date=None):
         # Try regular company extraction if fund extraction failed or didn't get enough data
         if not financial_data or len(financial_data) == 0:
             try:
-                financial_data = extract_values_from_xbrl(xbrl_path, "ConsolidatedBalanceSheetTextBlock", ["純資産合計", "負債純資産合計"])
-                profit_loss = extract_values_from_xbrl(xbrl_path, "ConsolidatedStatementOfIncomeTextBlock", ["売上高", "営業利益", "当期純利益"])
+                regular_balance_config = config['xbrl_extraction']['regular_company']['balance_sheet']
+                financial_data = extract_values_from_xbrl(xbrl_path, regular_balance_config['target_block_name'], regular_balance_config['search_words_list'])
+                
+                regular_profit_config = config['xbrl_extraction']['regular_company']['profit_loss']
+                profit_loss = extract_values_from_xbrl(xbrl_path, regular_profit_config['target_block_name'], regular_profit_config['search_words_list'])
                 if profit_loss:
                     financial_data = {**financial_data, **profit_loss}
                 logger.info(f"✅ {doc['企業名']} 通常企業形式でのXBRL解析が成功しました")
@@ -300,7 +306,8 @@ def main(company_conuts:int=None, start_date=None):
 
         # キャッシュフロー取得 ConsolidatedStatementOfCashFlowsTextBlock
         try:
-            cash_flow_data = extract_values_from_xbrl(xbrl_path, "ConsolidatedStatementOfCashFlowsTextBlock", ["営業活動によるキャッシュ・フロー"])
+            cash_flow_config = config['xbrl_extraction']['regular_company']['cash_flow']
+            cash_flow_data = extract_values_from_xbrl(xbrl_path, cash_flow_config['target_block_name'], cash_flow_config['search_words_list'])
             if cash_flow_data:
                 financial_data = {**financial_data, **cash_flow_data}
                 logger.info(f"✅ {doc['企業名']} キャッシュフロー取得成功")

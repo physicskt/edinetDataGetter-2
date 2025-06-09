@@ -62,5 +62,33 @@ config = {
         "アセットマネジメントＯｎｅ", "アセットマネジメント", "アセット", 
         "ブラックロック・ジャパン株式会社", "ピクテ・ジャパン株式会社",
         "インベストメン", "投信",
-    ]
+    ],
+    
+    # XBRL extraction configuration
+    'xbrl_extraction': {
+        'fund': {
+            'balance_sheet': {
+                'target_block_name': 'BalanceSheetTextBlock',
+                'search_words_list': ['純資産合計', '負債純資産合計']
+            },
+            'profit_loss': {
+                'target_block_name': 'StatementOfIncomeAndRetainedEarningsTextBlock',
+                'search_words_list': ['営業収益合計', '営業利益又は営業損失', '当期純利益又は当期純損失']
+            }
+        },
+        'regular_company': {
+            'balance_sheet': {
+                'target_block_name': 'ConsolidatedBalanceSheetTextBlock',
+                'search_words_list': ['純資産合計', '負債純資産合計']
+            },
+            'profit_loss': {
+                'target_block_name': 'ConsolidatedStatementOfIncomeTextBlock',
+                'search_words_list': ['売上高', '営業利益', '当期純利益']
+            },
+            'cash_flow': {
+                'target_block_name': 'ConsolidatedStatementOfCashFlowsTextBlock',
+                'search_words_list': ['営業活動によるキャッシュ・フロー']
+            }
+        }
+    }
 }
