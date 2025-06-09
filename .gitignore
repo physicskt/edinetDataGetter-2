@@ -1,0 +1,19 @@
+xbrl_files
+logfile.log
+venv
+__pycache__
+
+# Generated folders and files
+log/
+json/
+*.log
+
+# Sensitive configuration files (keep structure but not actual keys)
+_edinet_API_key.txt
+_google_share_url.txt
+_gcp_key.json
+credentials.json
+
+# Environment variables with sensitive data
+.env
+run_summary*

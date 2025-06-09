@@ -1,0 +1,7 @@
+requests
+pandas
+gspread
+bs4
+oauth2client
+lxml
+tkcalendar
